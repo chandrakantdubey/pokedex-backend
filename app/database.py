@@ -11,7 +11,7 @@ if os.getenv("RAILWAY_ENVIRONMENT") is None:
 # Prefer Railway's DATABASE_URL
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-# Fallback to local .env
+# Fallback to local .env values for development
 if not DATABASE_URL:
     DB_USER = os.getenv("DB_USER", "user")
     DB_PASSWORD = os.getenv("DB_PASSWORD", "password")
@@ -21,11 +21,23 @@ if not DATABASE_URL:
 
     DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
-# Fix postgres:// prefix if needed
+# Railway sometimes gives postgres:// so fix it
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
+# Create engine
 engine = create_engine(DATABASE_URL)
+
+# Session factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+# Base class for models
 Base = declarative_base()
+
+# Dependency for routes
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
