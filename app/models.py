@@ -137,3 +137,17 @@ class UserItem(Base):
 
     user = relationship("User", back_populates="items")
     item = relationship("Item")
+
+class UserFavorite(Base):
+    __tablename__ = "user_favorites"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    pokemon_id = Column(Integer, ForeignKey("pokemon.id"))
+    added_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", back_populates="favorites")
+    pokemon = relationship("Pokemon")
+
+# Update User relationship
+User.favorites = relationship("UserFavorite", back_populates="user")

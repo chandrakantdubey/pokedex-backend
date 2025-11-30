@@ -17,6 +17,12 @@ def catch_pokemon(pokemon_data: schemas.UserPokemonCreate, db: Session = Depends
     if not pokemon:
         raise HTTPException(status_code=404, detail="Pokemon not found")
     
+    # Check for Poke Ball (ID 1)
+    # In a real app, we might allow different balls, but for now ID 1 is standard
+    if not crud.remove_user_item(db, user_id=current_user.id, item_id=1, quantity=1):
+        raise HTTPException(status_code=400, detail="No Poke Balls left!")
+    
+    
     user_pokemon = crud.add_user_pokemon(db=db, user_id=current_user.id, pokemon_id=pokemon_data.pokemon_id, nickname=pokemon_data.nickname)
     
     # Calculate next level XP

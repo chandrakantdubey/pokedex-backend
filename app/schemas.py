@@ -194,3 +194,19 @@ class PartyUpdateRequest(BaseModel):
 
 class XPUpdate(BaseModel):
     xp_amount: int
+
+# Favorite Schemas
+class UserFavoriteBase(BaseModel):
+    pokemon_id: int
+
+class UserFavoriteCreate(UserFavoriteBase):
+    pass
+
+class UserFavorite(UserFavoriteBase):
+    id: int
+    user_id: int
+    added_at: datetime
+    pokemon: Pokemon
+
+    class Config:
+        from_attributes = True

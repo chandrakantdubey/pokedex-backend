@@ -27,10 +27,18 @@ def get_user_by_email(db: Session, email: str):
 
 def create_user(db: Session, user: schemas.UserCreate):
     hashed_password = auth.get_password_hash(user.password)
-    db_user = models.User(email=user.email, username=user.username, hashed_password=hashed_password)
+    # Initial money: 1200
+    db_user = models.User(email=user.email, username=user.username, hashed_password=hashed_password, money=1200)
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
+    
+    # Initial Items: 3 Poke Balls (ID 1)
+    # Assuming Item ID 1 is Poke Ball. If not, we should query by name, but ID 1 is standard in our seed.
+    initial_pokeballs = models.UserItem(user_id=db_user.id, item_id=1, quantity=3)
+    db.add(initial_pokeballs)
+    db.commit()
+    
     return db_user
 
 # Game
@@ -165,11 +173,43 @@ def add_user_item(db: Session, user_id: int, item_id: int, quantity: int):
         db.refresh(user_item)
         return user_item
 
+def remove_user_item(db: Session, user_id: int, item_id: int, quantity: int = 1):
+    existing = db.query(models.UserItem).filter(models.UserItem.user_id == user_id, models.UserItem.item_id == item_id).first()
+    if existing and existing.quantity >= quantity:
+        existing.quantity -= quantity
+        db.commit()
+        db.refresh(existing)
+        return True
+    return False
+
 def deduct_money(db: Session, user_id: int, amount: int):
     user = get_user(db, user_id)
     if user.money >= amount:
         user.money -= amount
         db.commit()
         db.refresh(user)
+        return True
+    return False
+
+# Favorites
+def get_user_favorites(db: Session, user_id: int):
+    return db.query(models.UserFavorite).filter(models.UserFavorite.user_id == user_id).all()
+
+def add_user_favorite(db: Session, user_id: int, pokemon_id: int):
+    existing = db.query(models.UserFavorite).filter(models.UserFavorite.user_id == user_id, models.UserFavorite.pokemon_id == pokemon_id).first()
+    if existing:
+        return existing
+    
+    db_favorite = models.UserFavorite(user_id=user_id, pokemon_id=pokemon_id)
+    db.add(db_favorite)
+    db.commit()
+    db.refresh(db_favorite)
+    return db_favorite
+
+def remove_user_favorite(db: Session, user_id: int, pokemon_id: int):
+    db_favorite = db.query(models.UserFavorite).filter(models.UserFavorite.user_id == user_id, models.UserFavorite.pokemon_id == pokemon_id).first()
+    if db_favorite:
+        db.delete(db_favorite)
+        db.commit()
         return True
     return False
