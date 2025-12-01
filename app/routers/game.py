@@ -12,24 +12,28 @@ router = APIRouter(
 
 @router.post("/catch", response_model=schemas.UserPokemon)
 def catch_pokemon(pokemon_data: schemas.UserPokemonCreate, db: Session = Depends(dependencies.get_db), current_user: models.User = Depends(dependencies.get_current_user)):
-    # Verify pokemon exists
-    pokemon = crud.get_pokemon(db, pokemon_id=pokemon_data.pokemon_id)
-    if not pokemon:
-        raise HTTPException(status_code=404, detail="Pokemon not found")
-    
-    # Check for Poke Ball (ID 1)
-    # In a real app, we might allow different balls, but for now ID 1 is standard
-    if not crud.remove_user_item(db, user_id=current_user.id, item_id=1, quantity=1):
-        raise HTTPException(status_code=400, detail="No Poke Balls left!")
-    
-    
-    user_pokemon = crud.add_user_pokemon(db=db, user_id=current_user.id, pokemon_id=pokemon_data.pokemon_id, nickname=pokemon_data.nickname)
-    
-    # Calculate next level XP
-    growth_rate = pokemon.growth_rate or "medium-fast"
-    user_pokemon.next_level_xp = calculate_xp_for_level(growth_rate, user_pokemon.level + 1)
-    
-    return user_pokemon
+    try:
+        # Verify pokemon exists
+        pokemon = crud.get_pokemon(db, pokemon_id=pokemon_data.pokemon_id)
+        if not pokemon:
+            raise HTTPException(status_code=404, detail="Pokemon not found")
+        
+        # Check for Poke Ball (ID 1)
+        # In a real app, we might allow different balls, but for now ID 1 is standard
+        if not crud.remove_user_item(db, user_id=current_user.id, item_id=1, quantity=1):
+            raise HTTPException(status_code=400, detail="No Poke Balls left!")
+        
+        
+        user_pokemon = crud.add_user_pokemon(db=db, user_id=current_user.id, pokemon_id=pokemon_data.pokemon_id, nickname=pokemon_data.nickname)
+        
+        # Calculate next level XP
+        growth_rate = pokemon.growth_rate or "medium-fast"
+        user_pokemon.next_level_xp = calculate_xp_for_level(growth_rate, user_pokemon.level + 1)
+        
+        return user_pokemon
+    except Exception as e:
+        print(f"Error in catch_pokemon: {e}")
+        raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
 
 @router.get("/my-pokemon", response_model=List[schemas.UserPokemon])
 def read_my_pokemon(db: Session = Depends(dependencies.get_db), current_user: models.User = Depends(dependencies.get_current_user)):
