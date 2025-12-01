@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from . import models, schemas, auth
 
 # Pokemon
@@ -43,7 +44,11 @@ def create_user(db: Session, user: schemas.UserCreate):
 
 # Game
 def add_user_pokemon(db: Session, user_id: int, pokemon_id: int, nickname: str = None):
-    db_user_pokemon = models.UserPokemon(user_id=user_id, pokemon_id=pokemon_id, nickname=nickname)
+    # Manual ID generation to handle broken auto-increment on remote DB
+    max_id = db.query(func.max(models.UserPokemon.id)).scalar() or 0
+    new_id = max_id + 1
+    
+    db_user_pokemon = models.UserPokemon(id=new_id, user_id=user_id, pokemon_id=pokemon_id, nickname=nickname)
     db.add(db_user_pokemon)
     db.commit()
     db.refresh(db_user_pokemon)
