@@ -98,6 +98,48 @@ class PokemonCreate(PokemonBase):
 class PokemonDetail(PokemonBase):
     moves_learned: List[MoveBase] = []
 
+# --- World Models ---
+class GymBase(BaseModel):
+    name: str
+    location: str
+    leader_name: str
+    type_specialty: str
+    badge_name: str
+    badge_image_url: Optional[str] = None
+
+class GymCreate(GymBase):
+    pass
+
+class Gym(GymBase):
+    id: int
+    class Config:
+        from_attributes = True
+
+class EliteFourMemberBase(BaseModel):
+    name: str
+    rank: int
+    specialty_type: str
+    image_url: Optional[str] = None
+
+class EliteFourMemberCreate(EliteFourMemberBase):
+    pass
+
+class EliteFourMember(EliteFourMemberBase):
+    id: int
+    class Config:
+        from_attributes = True
+
+class UserBadgeBase(BaseModel):
+    gym_id: int
+
+class UserBadge(UserBadgeBase):
+    id: int
+    user_id: int
+    earned_at: datetime
+    gym: Optional[Gym] = None
+    class Config:
+        from_attributes = True
+
 # --- User & Game Models ---
 class UserBase(BaseModel):
     username: str
@@ -128,7 +170,75 @@ class UserPokemonDisplay(BaseModel):
     nickname: Optional[str] = None
     level: int
     experience: int
+    next_level_xp: Optional[int] = 0 # Computed field
     pokemon: PokemonBase
 
     class Config:
         from_attributes = True
+
+class UserPokemonCreate(BaseModel):
+    pokemon_id: int
+    nickname: Optional[str] = None
+
+class BattleHistoryBase(BaseModel):
+    opponent_name: str
+    result: str 
+    money_earned: int = 0
+
+class BattleHistoryCreate(BattleHistoryBase):
+    pass
+
+class BattleHistory(BattleHistoryBase):
+    id: int
+    user_id: int
+    battle_date: datetime
+    class Config:
+        from_attributes = True
+
+class PartyUpdateRequest(BaseModel):
+    user_pokemon_id: int
+    is_in_party: bool
+
+class XPUpdate(BaseModel):
+    xp_amount: int
+
+# --- Shop Models ---
+class Item(ItemBase):
+    id: int
+    class Config:
+        from_attributes = True
+
+class UserItemBase(BaseModel):
+    item_id: int
+    quantity: int
+
+class UserItem(UserItemBase):
+    id: int
+    user_id: int
+    item: Optional[Item] = None
+    class Config:
+        from_attributes = True
+
+class BuyItemRequest(BaseModel):
+    item_id: int
+    quantity: int
+
+# --- User Favorites ---
+class UserFavoriteBase(BaseModel):
+    pokemon_id: int
+
+class UserFavoriteCreate(UserFavoriteBase):
+    pass
+
+class UserFavorite(UserFavoriteBase):
+    id: int
+    user_id: int
+    pokemon: Optional[PokemonBase] = None
+    
+    class Config:
+        from_attributes = True
+
+# --- Aliases ---
+User = UserDisplay
+UserPokemon = UserPokemonDisplay
+Pokemon = PokemonDetail
