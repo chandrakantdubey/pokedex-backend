@@ -1,54 +1,101 @@
 from pydantic import BaseModel
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Any, Dict
 from datetime import datetime
 
-# Move Schemas
-class MoveBase(BaseModel):
+# --- Base Models ---
+class TypeBase(BaseModel):
+    id: int
     name: str
-    type: str
+
+class AbilityBase(BaseModel):
+    id: int
+    name: str
+    effect: Optional[str] = None
+
+class StatBase(BaseModel):
+    id: int
+    name: str
+
+class EggGroupBase(BaseModel):
+    id: int
+    name: str
+
+class GrowthRateBase(BaseModel):
+    id: int
+    name: str
+    formula: Optional[str] = None
+
+class NatureBase(BaseModel):
+    id: int
+    name: str
+    increased_stat_id: Optional[int] = None
+    decreased_stat_id: Optional[int] = None
+
+# --- Item & Berry ---
+class ItemBase(BaseModel):
+    id: int
+    name: str
+    cost: Optional[int] = 0
+    category_name: Optional[str] = None
+    effect: Optional[str] = None
+    sprite_url: Optional[str] = None
+
+class BerryBase(BaseModel):
+    id: int
+    name: str
+    growth_time: int
+    max_harvest: int
+    size: int
+    smoothness: int
+    soil_dryness: int
+    firmness_name: str
+    item: Optional[ItemBase] = None
+
+# --- Pokemon Models ---
+class PokemonSpeciesBase(BaseModel):
+    id: int
+    name: str
+    order: Optional[int] = None
+    gender_rate: Optional[int] = None
+    capture_rate: Optional[int] = None
+    base_happiness: Optional[int] = None
+    is_baby: Optional[bool] = False
+    growth_rate: Optional[GrowthRateBase] = None
+    
+    class Config:
+        from_attributes = True
+
+class MoveBase(BaseModel):
+    id: int
+    name: str
+    type_id: Optional[int] = None
     power: Optional[int] = None
     accuracy: Optional[int] = None
     pp: Optional[int] = None
     damage_class: Optional[str] = None
-
-class Move(MoveBase):
-    id: int
-
+    
     class Config:
         from_attributes = True
 
-class PokemonMoveBase(BaseModel):
-    learn_method: str
-    level_learned_at: Optional[int] = None
-    move: Move
-
-    class Config:
-        from_attributes = True
-
-# Pokemon Schemas
 class PokemonBase(BaseModel):
+    id: int
     name: str
     height: int
     weight: int
-    types: List[str]
-    stats: Dict[str, int]
-    sprites: Dict[str, Any]
-    abilities: List[str]
-    growth_rate: Optional[str] = None
-    evolution_trigger: Optional[str] = None
-
-class PokemonCreate(PokemonBase):
-    pass
-
-class Pokemon(PokemonBase):
-    id: int
-    evolves_from_id: Optional[int] = None
-    moves: List[PokemonMoveBase] = []
+    base_experience: Optional[int] = None
+    types: List[TypeBase] = []
+    abilities: List[AbilityBase] = []
+    stats: Optional[Dict[str, Any]] = None 
+    sprites: Optional[Dict[str, Any]] = None
+    species: Optional[PokemonSpeciesBase] = None
 
     class Config:
         from_attributes = True
 
-# User Schemas
+class PokemonDetail(PokemonBase):
+    moves_learned: List[MoveBase] = [] 
+
+# --- User & Game Models ---
 class UserBase(BaseModel):
     username: str
     email: str
@@ -56,157 +103,29 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     password: str
 
-class User(UserBase):
-    id: int
-    money: int
-    is_active: bool
-    created_at: datetime
+class UserLogin(BaseModel):
+    username: str
+    password: str
 
-    class Config:
-        from_attributes = True
-
-# Token Schemas
 class Token(BaseModel):
     access_token: str
     token_type: str
 
-class TokenData(BaseModel):
-    username: Optional[str] = None
-
-# Game Schemas
-class UserPokemonBase(BaseModel):
-    pokemon_id: int
-    nickname: Optional[str] = None
-
-class UserPokemonCreate(UserPokemonBase):
-    pass
-
-class UserPokemon(UserPokemonBase):
+class UserDisplay(UserBase):
     id: int
-    user_id: int
+    is_active: bool
+    money: int
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+class UserPokemonDisplay(BaseModel):
+    id: int
+    nickname: Optional[str] = None
     level: int
     experience: int
-    acquired_at: datetime
-    pokemon: Pokemon
-    next_level_xp: Optional[int] = None # Calculated field
-    is_in_party: bool
-
-    class Config:
-        from_attributes = True
-
-class BattleHistoryBase(BaseModel):
-    opponent_name: str
-    result: str
-    money_earned: int
-
-class BattleHistoryCreate(BattleHistoryBase):
-    pass
-
-class BattleHistory(BattleHistoryBase):
-    id: int
-    user_id: int
-    battle_date: datetime
-
-    class Config:
-        from_attributes = True
-
-# World Schemas
-class GymBase(BaseModel):
-    name: str
-    location: str
-    leader_name: str
-    type_specialty: str
-    badge_name: str
-    badge_image_url: str
-
-class GymCreate(GymBase):
-    pass
-
-class Gym(GymBase):
-    id: int
-
-    class Config:
-        from_attributes = True
-
-class EliteFourMemberBase(BaseModel):
-    name: str
-    rank: int
-    specialty_type: str
-    image_url: str
-
-class EliteFourMemberCreate(EliteFourMemberBase):
-    pass
-
-class EliteFourMember(EliteFourMemberBase):
-    id: int
-
-    class Config:
-        from_attributes = True
-
-class UserBadgeBase(BaseModel):
-    gym_id: int
-
-class UserBadge(UserBadgeBase):
-    id: int
-    user_id: int
-    earned_at: datetime
-    gym: Gym
-
-    class Config:
-        from_attributes = True
-
-# Shop Schemas
-class ItemBase(BaseModel):
-    name: str
-    description: str
-    price: int
-    image_url: str
-    category: str
-
-class ItemCreate(ItemBase):
-    pass
-
-class Item(ItemBase):
-    id: int
-
-    class Config:
-        from_attributes = True
-
-class UserItemBase(BaseModel):
-    item_id: int
-    quantity: int
-
-class UserItem(UserItemBase):
-    id: int
-    user_id: int
-    item: Item
-
-    class Config:
-        from_attributes = True
-
-class BuyItemRequest(BaseModel):
-    item_id: int
-    quantity: int = 1
-
-class PartyUpdateRequest(BaseModel):
-    user_pokemon_id: int
-    is_in_party: bool
-
-class XPUpdate(BaseModel):
-    xp_amount: int
-
-# Favorite Schemas
-class UserFavoriteBase(BaseModel):
-    pokemon_id: int
-
-class UserFavoriteCreate(UserFavoriteBase):
-    pass
-
-class UserFavorite(UserFavoriteBase):
-    id: int
-    user_id: int
-    added_at: datetime
-    pokemon: Pokemon
-
+    pokemon: PokemonBase
+    
     class Config:
         from_attributes = True
