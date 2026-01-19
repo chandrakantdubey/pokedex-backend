@@ -61,7 +61,7 @@ class PokemonSpeciesBase(BaseModel):
     base_happiness: Optional[int] = None
     is_baby: Optional[bool] = False
     growth_rate: Optional[GrowthRateBase] = None
-    
+
     class Config:
         from_attributes = True
 
@@ -73,7 +73,7 @@ class MoveBase(BaseModel):
     accuracy: Optional[int] = None
     pp: Optional[int] = None
     damage_class: Optional[str] = None
-    
+
     class Config:
         from_attributes = True
 
@@ -85,15 +85,18 @@ class PokemonBase(BaseModel):
     base_experience: Optional[int] = None
     types: List[TypeBase] = []
     abilities: List[AbilityBase] = []
-    stats: Optional[Dict[str, Any]] = None 
+    stats: Optional[Dict[str, Any]] = None
     sprites: Optional[Dict[str, Any]] = None
     species: Optional[PokemonSpeciesBase] = None
 
     class Config:
         from_attributes = True
 
+class PokemonCreate(PokemonBase):
+    pass
+
 class PokemonDetail(PokemonBase):
-    moves_learned: List[MoveBase] = [] 
+    moves_learned: List[MoveBase] = []
 
 # --- User & Game Models ---
 class UserBase(BaseModel):
@@ -116,7 +119,7 @@ class UserDisplay(UserBase):
     is_active: bool
     money: int
     created_at: datetime
-    
+
     class Config:
         from_attributes = True
 
@@ -126,6 +129,6 @@ class UserPokemonDisplay(BaseModel):
     level: int
     experience: int
     pokemon: PokemonBase
-    
+
     class Config:
         from_attributes = True
