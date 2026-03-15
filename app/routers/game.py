@@ -18,9 +18,15 @@ def catch_pokemon(pokemon_data: schemas.UserPokemonCreate, db: Session = Depends
         if not pokemon:
             raise HTTPException(status_code=404, detail="Pokemon not found")
         
-        # Check for Poke Ball (ID 1)
-        # In a real app, we might allow different balls, but for now ID 1 is standard
-        if not crud.remove_user_item(db, user_id=current_user.id, item_id=1, quantity=1):
+        # Find Poke Ball (ID can vary, so look it up)
+        poke_ball = db.query(models.Item).filter(models.Item.name.ilike("%poke%ball%")).first()
+        if not poke_ball:
+            # Fallback to ID 1 if search fails, though lookup is safer
+            poke_ball_id = 1
+        else:
+            poke_ball_id = poke_ball.id
+            
+        if not crud.remove_user_item(db, user_id=current_user.id, item_id=poke_ball_id, quantity=1):
             raise HTTPException(status_code=400, detail="No Poke Balls left!")
         
         

@@ -40,6 +40,9 @@ class ItemBase(BaseModel):
     effect: Optional[str] = None
     sprite_url: Optional[str] = None
 
+    class Config:
+        from_attributes = True
+
 class BerryBase(BaseModel):
     id: int
     name: str
@@ -50,6 +53,9 @@ class BerryBase(BaseModel):
     soil_dryness: int
     firmness_name: str
     item: Optional[ItemBase] = None
+
+    class Config:
+        from_attributes = True
 
 # --- Pokemon Models ---
 class PokemonSpeciesBase(BaseModel):
@@ -185,6 +191,9 @@ class UserPokemonDisplay(BaseModel):
     special_attack: int
     special_defense: int
     speed: int
+    user_id: int
+    is_in_party: bool
+    acquired_at: datetime
     pokemon: PokemonBase
 
     class Config:

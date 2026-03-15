@@ -52,18 +52,27 @@ def create_user(db: Session, user: schemas.UserCreate):
         poke_ball = db.query(models.Item).filter(models.Item.id == 1).first()
         
     if poke_ball:
-        initial_pokeballs = models.UserItem(user_id=db_user.id, item_id=poke_ball.id, quantity=3)
+        max_ui_id = db.query(func.max(models.UserItem.id)).scalar() or 0
+        initial_pokeballs = models.UserItem(id=max_ui_id + 1, user_id=db_user.id, item_id=poke_ball.id, quantity=3)
         db.add(initial_pokeballs)
+        db.commit() # Commit to ensure next ID is unique
         
     # 2. Initial Items: 5 Potions
     potion = db.query(models.Item).filter(models.Item.name.ilike("potion")).first()
     if potion:
-        initial_potions = models.UserItem(user_id=db_user.id, item_id=potion.id, quantity=5)
+        max_ui_id = db.query(func.max(models.UserItem.id)).scalar() or 0
+        initial_potions = models.UserItem(id=max_ui_id + 1, user_id=db_user.id, item_id=potion.id, quantity=5)
         db.add(initial_potions)
+        db.commit()
         
-    # 3. Random Starter Pokemon (Bulbasaur, Charmander, Squirtle)
-    starter_ids = [1, 4, 7, 9, 15, 25,102, 45, 67, 89, 133, 152, 155, 158, 161, 196, 252, 255, 258, 261, 387, 390, 393, 396, 495, 498, 501, 504, 650, 653, 656, 659, 722, 725, 728, 731, 810, 813, 816, 819, 906, 909, 912, 915, 966]
-    starter_id = random.choice(starter_ids)
+    # 3. Random Starter Pokemon (Any from the database)
+    poke_count = db.query(models.Pokemon).count()
+    if poke_count > 0:
+        random_index = random.randint(0, poke_count - 1)
+        starter_poke = db.query(models.Pokemon).offset(random_index).first()
+        starter_id = starter_poke.id
+    else:
+        starter_id = 1 # Fallback
     
     # Manual ID generation for UserPokemon
     max_up_id = db.query(func.max(models.UserPokemon.id)).scalar() or 0
@@ -245,7 +254,8 @@ def add_user_item(db: Session, user_id: int, item_id: int, quantity: int):
         db.refresh(existing)
         return existing
     else:
-        user_item = models.UserItem(user_id=user_id, item_id=item_id, quantity=quantity)
+        max_id = db.query(func.max(models.UserItem.id)).scalar() or 0
+        user_item = models.UserItem(id=max_id + 1, user_id=user_id, item_id=item_id, quantity=quantity)
         db.add(user_item)
         db.commit()
         db.refresh(user_item)
