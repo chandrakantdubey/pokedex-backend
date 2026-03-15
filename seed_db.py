@@ -78,7 +78,9 @@ async def seed_metadata(db, client, semaphore):
         "type": models.Type,
         "stat": models.Stat,
         "egg-group": models.EggGroup,
-        "growth-rate": models.GrowthRate
+        "growth-rate": models.GrowthRate,
+        "nature": models.Nature,
+        "region": models.Region
     }
     
     for endpoint, model in endpoints.items():
@@ -136,9 +138,88 @@ async def seed_moves_abilities_items(db, client, semaphore):
             db.commit()
             print(f"Abilities: {i+len(chunk)}")
 
-    # 3. Items/Berries
-    # (Simplified for brevity: Items/Berries logic from before is fine, just needs to run here)
-    # Skipping redundant code, assuming previous logic works if transaction is clean.
+    # 3. Items & Berries
+    print("Fetching item categories...")
+    existing_items = get_existing_ids(db, models.Item)
+    existing_berries = get_existing_ids(db, models.Berry)
+    
+    # We'll fetch items from specific categories that are relevant
+    categories = ["standard-balls", "special-balls", "revive", "healing", "status-cures", "berries"]
+    for cat_name in categories:
+        print(f"Fetching category: {cat_name}")
+        cat_data = await fetch_url(client, f"{POKEAPI_BASE_URL}/item-category/{cat_name}", semaphore)
+        if cat_data:
+            urls = [r["url"] for r in cat_data["items"]]
+            for i in range(0, len(urls), CHUNK_SIZE):
+                chunk = urls[i:i + CHUNK_SIZE]
+                tasks = [fetch_url(client, u, semaphore) for u in chunk]
+                results = await asyncio.gather(*tasks)
+                for item in results:
+                    if item and item["id"] not in existing_items:
+                        effect = next((e["short_effect"] for e in item["effect_entries"] if e["language"]["name"] == "en"), None)
+                        db.add(models.Item(
+                            id=item["id"],
+                            name=item["name"],
+                            cost=item["cost"],
+                            fling_power=item["fling_power"],
+                            category_name=cat_name,
+                            effect=effect,
+                            sprite_url=item["sprites"]["default"]
+                        ))
+                        # If it's a berry, fetch berry data
+                        if cat_name == "berries" and item["id"] not in existing_berries:
+                            berry_url = item["baby_trigger_for"] # Wait, berries have their own endpoint
+                            # Better approach: fetching by item name isn't always 1:1, but PokeAPI has /berry endpoint
+                            # We'll handle berries in a separate pass below for accuracy
+                db.commit()
+
+    # 4. Berries specific pass
+    print("Fetching berries and ensuring items exist...")
+    berry_list = await fetch_url(client, f"{POKEAPI_BASE_URL}/berry?limit=100", semaphore)
+    if berry_list:
+        urls = [r["url"] for r in berry_list["results"]]
+        for i in range(0, len(urls), CHUNK_SIZE):
+            chunk = urls[i:i+CHUNK_SIZE]
+            tasks = [fetch_url(client, u, semaphore) for u in chunk]
+            results = await asyncio.gather(*tasks)
+            for b_data in results:
+                if not b_data: continue
+                if b_data["id"] in existing_berries: continue
+                
+                item_url = b_data["item"]["url"]
+                item_id = int(item_url.split("/")[-2])
+                
+                # Ensure Item exists
+                if item_id not in existing_items:
+                    item_data = await fetch_url(client, item_url, semaphore)
+                    if item_data:
+                        effect = next((e["short_effect"] for e in item_data["effect_entries"] if e["language"]["name"] == "en"), None)
+                        db.add(models.Item(
+                            id=item_data["id"],
+                            name=item_data["name"],
+                            cost=item_data["cost"],
+                            fling_power=item_data["fling_power"],
+                            category_name="berries",
+                            effect=effect,
+                            sprite_url=item_data["sprites"]["default"]
+                        ))
+                        existing_items.add(item_id)
+                        db.flush() # Ensure item is in DB before berry
+                
+                db.add(models.Berry(
+                    id=b_data["id"],
+                    item_id=item_id,
+                    name=b_data["name"].capitalize() + " Berry",
+                    growth_time=b_data["growth_time"],
+                    max_harvest=b_data["max_harvest"],
+                    natural_gift_power=b_data["natural_gift_power"],
+                    size=b_data["size"],
+                    smoothness=b_data["smoothness"],
+                    soil_dryness=b_data["soil_dryness"],
+                    firmness_name=b_data["firmness"]["name"]
+                ))
+                existing_berries.add(b_data["id"])
+            db.commit()
 
 # --- Phase 3: Species & Pokemon (Split) ---
 
@@ -184,8 +265,51 @@ async def seed_species_basic(db, client, semaphore):
                     generation_id=gen_id
                     # evolves_from_species_id set in later pass
                 ))
-            db.commit()
-            print(f"Species Basic: {i+len(chunk)}")
+    db.commit()
+    print(f"Species Basic: {i+len(chunk)}")
+
+async def seed_natures_details(db, client, semaphore):
+    print("--- Polishing Nature Details ---")
+    natures = db.query(models.Nature).all()
+    for n in natures:
+        data = await fetch_url(client, f"{POKEAPI_BASE_URL}/nature/{n.id}", semaphore)
+        if data:
+            n.increased_stat_id = int(data["increased_stat"]["url"].split("/")[-2]) if data["increased_stat"] else None
+            n.decreased_stat_id = int(data["decreased_stat"]["url"].split("/")[-2]) if data["decreased_stat"] else None
+    db.commit()
+
+async def update_species_links(db, client, semaphore):
+    print("--- Updating Species Links (Evolution & Egg Groups) ---")
+    species = db.query(models.PokemonSpecies).all()
+    valid_egg_groups = get_existing_ids(db, models.EggGroup)
+    
+    urls = [f"{POKEAPI_BASE_URL}/pokemon-species/{s.id}" for s in species]
+    for i in range(0, len(urls), CHUNK_SIZE):
+        chunk_urls = urls[i:i + CHUNK_SIZE]
+        tasks = [fetch_url(client, u, semaphore) for u in chunk_urls]
+        results = await asyncio.gather(*tasks)
+        for data in results:
+            if not data: continue
+            s = db.query(models.PokemonSpecies).get(data["id"])
+            if not s: continue
+            
+            # Evolution
+            if data["evolves_from_species"]:
+                parent_id = int(data["evolves_from_species"]["url"].split("/")[-2])
+                s.evolves_from_species_id = parent_id
+            
+            # Egg Groups
+            for eg in data["egg_groups"]:
+                eg_id = int(eg["url"].split("/")[-2])
+                if eg_id in valid_egg_groups:
+                    exists = db.execute(select(models.pokemon_egg_groups).where(
+                        models.pokemon_egg_groups.c.species_id == s.id,
+                        models.pokemon_egg_groups.c.egg_group_id == eg_id
+                    )).first()
+                    if not exists:
+                        db.execute(models.pokemon_egg_groups.insert().values(species_id=s.id, egg_group_id=eg_id))
+        db.commit()
+        print(f"Species Links: {i+len(chunk_urls)}")
 
 async def seed_pokemon_and_links(db, client, semaphore):
     print("--- Seeding Pokemon & Links ---")
@@ -273,8 +397,10 @@ async def main():
     async with httpx.AsyncClient(timeout=60.0) as client:
         await seed_static_content(db)
         await seed_metadata(db, client, semaphore)
+        await seed_natures_details(db, client, semaphore)
         await seed_moves_abilities_items(db, client, semaphore)
-        await seed_species_basic(db, client, semaphore) 
+        await seed_species_basic(db, client, semaphore)
+        await update_species_links(db, client, semaphore)
         await seed_pokemon_and_links(db, client, semaphore)
 
     print("--- Full Seeding Completed ---")
