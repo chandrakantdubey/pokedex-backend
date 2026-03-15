@@ -127,7 +127,7 @@ class Move(Base):
     accuracy = Column(Integer, nullable=True)
     priority = Column(Integer, default=0)
     damage_class = Column(String, nullable=True) # physical, special, status
-    effect_cvhance = Column(Integer, nullable=True)
+    effect_chance = Column(Integer, nullable=True)
     generation_id = Column(Integer, ForeignKey("generations.id"), nullable=True)
     
     type = relationship("Type")

@@ -4,7 +4,7 @@ import os
 import sys
 
 sys.path.append(os.getcwd())
-os.environ["DB_HOST"] = "localhost"
+# os.environ["DB_HOST"] = "localhost"  # Removed to allow Railway environment variables
 
 from sqlalchemy.orm import Session
 from sqlalchemy import select, update
@@ -12,6 +12,9 @@ from sqlalchemy.exc import IntegrityError
 from app.database import SessionLocal, engine, Base
 from app import models
 
+# To ensure Railway has the latest schema, we drop then create. 
+# WARNING: This deletes existing data in these tables.
+Base.metadata.drop_all(bind=engine)
 Base.metadata.create_all(bind=engine)
 
 POKEAPI_BASE_URL = "https://pokeapi.co/api/v2"
@@ -116,7 +119,7 @@ async def seed_moves_abilities_items(db, client, semaphore):
                         id=m["id"], name=m["name"], type_id=type_id, power=m["power"], 
                         pp=m["pp"], accuracy=m["accuracy"], priority=m["priority"],
                         damage_class=m["damage_class"]["name"] if m["damage_class"] else None,
-                        generation_id=gen_id, effect_cvhance=m["effect_chance"]
+                        generation_id=gen_id, effect_chance=m["effect_chance"]
                     ))
             db.commit()
             print(f"Moves: {i+len(chunk)}")
