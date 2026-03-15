@@ -62,7 +62,7 @@ def create_user(db: Session, user: schemas.UserCreate):
         db.add(initial_potions)
         
     # 3. Random Starter Pokemon (Bulbasaur, Charmander, Squirtle)
-    starter_ids = [1, 4, 7]
+    starter_ids = [1, 4, 7, 9, 15, 25,102, 45, 67, 89, 133, 152, 155, 158, 161, 196, 252, 255, 258, 261, 387, 390, 393, 396, 495, 498, 501, 504, 650, 653, 656, 659, 722, 725, 728, 731, 810, 813, 816, 819, 906, 909, 912, 915, 966]
     starter_id = random.choice(starter_ids)
     
     # Manual ID generation for UserPokemon
@@ -258,3 +258,41 @@ def remove_user_favorite(db: Session, user_id: int, pokemon_id: int):
         db.commit()
         return True
     return False
+
+# Berries
+def get_berries(db: Session):
+    return db.query(models.Berry).all()
+
+# Seen Pokemon
+def add_user_seen(db: Session, user_id: int, pokemon_id: int):
+    existing = db.query(models.UserSeen).filter(models.UserSeen.user_id == user_id, models.UserSeen.pokemon_id == pokemon_id).first()
+    if existing:
+        return existing
+    
+    db_seen = models.UserSeen(user_id=user_id, pokemon_id=pokemon_id)
+    db.add(db_seen)
+    db.commit()
+    db.refresh(db_seen)
+    return db_seen
+
+def get_user_seen_ids(db: Session, user_id: int):
+    seen = db.query(models.UserSeen).filter(models.UserSeen.user_id == user_id).all()
+    return [s.pokemon_id for s in seen]
+
+# Stats
+def get_user_stats(db: Session, user_id: int):
+    history = db.query(models.BattleHistory).filter(models.BattleHistory.user_id == user_id).all()
+    total_battles = len(history)
+    battles_won = sum(1 for b in history if b.won or b.result == 'VICTORY')
+    
+    user = get_user(db, user_id)
+    total_caught = db.query(models.UserPokemon).filter(models.UserPokemon.user_id == user_id).count()
+    total_seen = db.query(models.UserSeen).filter(models.UserSeen.user_id == user_id).count()
+    
+    return {
+        "total_battles": total_battles,
+        "battles_won": battles_won,
+        "total_caught": total_caught,
+        "total_seen": total_seen,
+        "money": user.money if user else 0
+    }

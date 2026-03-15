@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from .database import engine, Base
-from .routers import pokemon, auth, users, game, world, shop
+from .routers import pokemon, auth, users, game, world, shop, berries
 
 Base.metadata.create_all(bind=engine)
 
@@ -22,6 +22,7 @@ app.include_router(users.router)
 app.include_router(game.router)
 app.include_router(world.router)
 app.include_router(shop.router)
+app.include_router(berries.router)
 
 @app.get("/")
 def read_root():

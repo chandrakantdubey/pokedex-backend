@@ -185,6 +185,7 @@ class User(Base):
     badges = relationship("UserBadge", back_populates="user")
     items = relationship("UserItem", back_populates="user")
     favorites = relationship("UserFavorite", back_populates="user")
+    seen = relationship("UserSeen", back_populates="user")
 
 class UserPokemon(Base):
     __tablename__ = "user_pokemon"
@@ -258,3 +259,12 @@ class UserFavorite(Base):
 
     user = relationship("User", back_populates="favorites")
     pokemon = relationship("Pokemon")
+
+class UserSeen(Base):
+    __tablename__ = "user_seen"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    pokemon_id = Column(Integer)
+    seen_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", back_populates="seen")

@@ -27,7 +27,7 @@ def catch_pokemon(pokemon_data: schemas.UserPokemonCreate, db: Session = Depends
         user_pokemon = crud.add_user_pokemon(db=db, user_id=current_user.id, pokemon_id=pokemon_data.pokemon_id, nickname=pokemon_data.nickname)
         
         # Calculate next level XP
-        growth_rate = pokemon.growth_rate or "medium-fast"
+        growth_rate = pokemon.species.growth_rate.name if pokemon.species and pokemon.species.growth_rate else "medium-fast"
         user_pokemon.next_level_xp = calculate_xp_for_level(growth_rate, user_pokemon.level + 1)
         
         return user_pokemon
@@ -41,7 +41,9 @@ def read_my_pokemon(db: Session = Depends(dependencies.get_db), current_user: mo
     
     # Enrich with XP data
     for up in user_pokemons:
-        growth_rate = up.pokemon.growth_rate or "medium-fast"
+        growth_rate = "medium-fast"
+        if up.pokemon and up.pokemon.species and up.pokemon.species.growth_rate:
+            growth_rate = up.pokemon.species.growth_rate.name
         up.next_level_xp = calculate_xp_for_level(growth_rate, up.level + 1)
         
     return user_pokemons
@@ -56,7 +58,9 @@ def get_party(db: Session = Depends(dependencies.get_db), current_user: models.U
     
     # Enrich with XP data
     for up in party:
-        growth_rate = up.pokemon.growth_rate or "medium-fast"
+        growth_rate = "medium-fast"
+        if up.pokemon and up.pokemon.species and up.pokemon.species.growth_rate:
+            growth_rate = up.pokemon.species.growth_rate.name
         up.next_level_xp = calculate_xp_for_level(growth_rate, up.level + 1)
         
     return party
