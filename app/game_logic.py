@@ -54,3 +54,25 @@ def calculate_level_from_xp(growth_rate: str, xp: int) -> int:
         if xp < required_xp:
             return level - 1
     return 100
+
+def calculate_stats(base_stats: dict, level: int):
+    """
+    Calculate Pokemon stats based on base stats and level.
+    Simplified Gen 3 formula.
+    """
+    # { "hp": 45, "attack": 49, ... }
+    stats = {}
+    
+    # HP
+    base_hp = base_stats.get("hp", 10)
+    stats["max_hp"] = math.floor(0.01 * (2 * base_hp + 31) * level) + level + 10
+    stats["current_hp"] = stats["max_hp"]
+    
+    # Others
+    for stat_name in ["attack", "defense", "special-attack", "special-defense", "speed"]:
+        base = base_stats.get(stat_name, 10)
+        # Convert hyphenated names to underscored for model compatibility
+        key = stat_name.replace("-", "_")
+        stats[key] = math.floor(0.01 * (2 * base + 31) * level) + 5
+        
+    return stats

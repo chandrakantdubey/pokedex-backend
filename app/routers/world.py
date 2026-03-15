@@ -27,3 +27,13 @@ def challenge_gym(gym_id: int, db: Session = Depends(dependencies.get_db), curre
 @router.get("/my-badges", response_model=List[schemas.UserBadge])
 def read_my_badges(db: Session = Depends(dependencies.get_db), current_user: models.User = Depends(dependencies.get_current_user)):
     return crud.get_user_badges(db, user_id=current_user.id)
+
+@router.post("/elite-four/progress")
+def update_ef_progress(progress: int, db: Session = Depends(dependencies.get_db), current_user: models.User = Depends(dependencies.get_current_user)):
+    if progress < 0 or progress > 4:
+        raise HTTPException(status_code=400, detail="Invalid progress")
+    return crud.update_elite_four_progress(db, user_id=current_user.id, progress=progress)
+
+@router.post("/elite-four/champion")
+def make_champion(is_champion: bool = True, db: Session = Depends(dependencies.get_db), current_user: models.User = Depends(dependencies.get_current_user)):
+    return crud.set_champion(db, user_id=current_user.id, is_champion=is_champion)

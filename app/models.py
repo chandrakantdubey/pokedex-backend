@@ -88,6 +88,8 @@ class PokemonSpecies(Base):
     generation_id = Column(Integer, ForeignKey("generations.id"), nullable=True)
     evolves_from_species_id = Column(Integer, ForeignKey("pokemon_species.id"), nullable=True)
     evolution_chain_id = Column(Integer, nullable=True) # Just ID for now, complex to model fully
+    evolution_level = Column(Integer, nullable=True) # Level at which this species evolves
+    evolution_species_id = Column(Integer, ForeignKey("pokemon_species.id"), nullable=True) # ID of next evolution
     
     growth_rate = relationship("GrowthRate")
     generation = relationship("Generation")
@@ -176,7 +178,11 @@ class User(Base):
     username = Column(String, unique=True, index=True)
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
-    money = Column(Integer, default=0)
+    money = Column(Integer, default=3000)
+    
+    # Progress
+    elite_four_progress = Column(Integer, default=0) # 0-4
+    is_champion = Column(Boolean, default=False)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -197,6 +203,15 @@ class UserPokemon(Base):
     experience = Column(Integer, default=0)
     acquired_at = Column(DateTime, default=datetime.utcnow)
     is_in_party = Column(Boolean, default=False)
+    
+    # Current Stats (Calculated based on level and base stats)
+    current_hp = Column(Integer, default=10)
+    max_hp = Column(Integer, default=10)
+    attack = Column(Integer, default=5)
+    defense = Column(Integer, default=5)
+    special_attack = Column(Integer, default=5)
+    special_defense = Column(Integer, default=5)
+    speed = Column(Integer, default=5)
 
     owner = relationship("User", back_populates="pokemons")
     pokemon = relationship("Pokemon")
@@ -234,7 +249,7 @@ class UserBadge(Base):
     __tablename__ = "user_badges"
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
-    gym_id = Column(Integer, ForeignKey("gyms.id"))
+    gym_id = Column(Integer) # 1-8
     earned_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="badges")

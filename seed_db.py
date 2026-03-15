@@ -314,6 +314,48 @@ async def update_species_links(db, client, semaphore):
         db.commit()
         print(f"Species Links: {i+len(chunk_urls)}")
 
+async def seed_evolution_details(db, client, semaphore):
+    print("--- Seeding Evolution Details ---")
+    # Fetch all evolution chains
+    data = await fetch_url(client, f"{POKEAPI_BASE_URL}/evolution-chain?limit=1000", semaphore)
+    if not data: return
+    
+    urls = [r["url"] for r in data["results"]]
+    for i in range(0, len(urls), CHUNK_SIZE):
+        chunk = urls[i:i+CHUNK_SIZE]
+        tasks = [fetch_url(client, u, semaphore) for u in chunk]
+        results = await asyncio.gather(*tasks)
+        
+        for chain_data in results:
+            if not chain_data: continue
+            
+            def process_chain(node):
+                species_url = node["species"]["url"]
+                species_id = int(species_url.split("/")[-2])
+                
+                for evolution in node["evolves_to"]:
+                    next_species_url = evolution["species"]["url"]
+                    next_species_id = int(next_species_url.split("/")[-2])
+                    
+                    # Find level trigger
+                    level = None
+                    for detail in evolution["evolution_details"]:
+                        if detail["trigger"]["name"] == "level-up":
+                            level = detail["min_level"]
+                            break
+                    
+                    # Update DB
+                    db.execute(update(models.PokemonSpecies).where(models.PokemonSpecies.id == species_id).values(
+                        evolution_level=level,
+                        evolution_species_id=next_species_id
+                    ))
+                    
+                    process_chain(evolution)
+            
+            process_chain(chain_data["chain"])
+        db.commit()
+        print(f"Evolution Chains: {i+len(chunk)}")
+
 async def seed_pokemon_and_links(db, client, semaphore):
     print("--- Seeding Pokemon & Links ---")
     
@@ -404,6 +446,7 @@ async def main():
         await seed_moves_abilities_items(db, client, semaphore)
         await seed_species_basic(db, client, semaphore)
         await update_species_links(db, client, semaphore)
+        await seed_evolution_details(db, client, semaphore)
         await seed_pokemon_and_links(db, client, semaphore)
 
     print("--- Full Seeding Completed ---")

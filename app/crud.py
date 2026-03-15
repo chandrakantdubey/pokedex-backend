@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from . import models, schemas, auth
+from . import models, schemas, auth, game_logic
 import random
 
 # Pokemon
@@ -69,12 +69,17 @@ def create_user(db: Session, user: schemas.UserCreate):
     max_up_id = db.query(func.max(models.UserPokemon.id)).scalar() or 0
     new_up_id = max_up_id + 1
     
+    # Calculate stats
+    pokemon_data = db.query(models.Pokemon).get(starter_id)
+    stats = game_logic.calculate_stats(pokemon_data.stats, 5)
+    
     starter_pokemon = models.UserPokemon(
         id=new_up_id,
         user_id=db_user.id,
         pokemon_id=starter_id,
         level=5,
-        is_in_party=True
+        is_in_party=True,
+        **stats
     )
     db.add(starter_pokemon)
     
@@ -88,7 +93,17 @@ def add_user_pokemon(db: Session, user_id: int, pokemon_id: int, nickname: str =
     max_id = db.query(func.max(models.UserPokemon.id)).scalar() or 0
     new_id = max_id + 1
     
-    db_user_pokemon = models.UserPokemon(id=new_id, user_id=user_id, pokemon_id=pokemon_id, nickname=nickname)
+    # Calculate stats
+    pokemon = get_pokemon(db, pokemon_id)
+    stats = game_logic.calculate_stats(pokemon.stats, 1) # Start at level 1
+    
+    db_user_pokemon = models.UserPokemon(
+        id=new_id, 
+        user_id=user_id, 
+        pokemon_id=pokemon_id, 
+        nickname=nickname,
+        **stats
+    )
     db.add(db_user_pokemon)
     db.commit()
     db.refresh(db_user_pokemon)
@@ -138,16 +153,18 @@ def add_xp(db: Session, user_pokemon_id: int, xp_amount: int):
     user_pokemon.experience += xp_amount
     
     # Check for level up
-    # Threshold for level L is L^3 (Medium Fast) or similar.
-    # Let's use a simple formula: Level = cubic root of XP?
-    # Or just: Level up if XP >= Level * 100
-    
-    # Let's use a simple loop for now
+    growth_rate = "medium-fast"
+    if user_pokemon.pokemon and user_pokemon.pokemon.species and user_pokemon.pokemon.species.growth_rate:
+        growth_rate = user_pokemon.pokemon.species.growth_rate.name
+        
     while True:
-        xp_needed = user_pokemon.level * 100 # Simplified
+        xp_needed = game_logic.calculate_xp_for_level(growth_rate, user_pokemon.level + 1)
         if user_pokemon.experience >= xp_needed:
-            user_pokemon.experience -= xp_needed
             user_pokemon.level += 1
+            # Recalculate stats on level up
+            new_stats = game_logic.calculate_stats(user_pokemon.pokemon.stats, user_pokemon.level)
+            for k, v in new_stats.items():
+                setattr(user_pokemon, k, v)
         else:
             break
             
@@ -193,6 +210,22 @@ def add_user_badge(db: Session, user_id: int, gym_id: int):
 
 def get_user_badges(db: Session, user_id: int):
     return db.query(models.UserBadge).filter(models.UserBadge.user_id == user_id).all()
+
+def update_elite_four_progress(db: Session, user_id: int, progress: int):
+    user = get_user(db, user_id)
+    if user:
+        user.elite_four_progress = progress
+        db.commit()
+        db.refresh(user)
+    return user
+
+def set_champion(db: Session, user_id: int, is_champion: bool = True):
+    user = get_user(db, user_id)
+    if user:
+        user.is_champion = is_champion
+        db.commit()
+        db.refresh(user)
+    return user
 
 # Shop
 def get_items(db: Session):

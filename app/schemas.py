@@ -61,6 +61,8 @@ class PokemonSpeciesBase(BaseModel):
     base_happiness: Optional[int] = None
     is_baby: Optional[bool] = False
     growth_rate: Optional[GrowthRateBase] = None
+    evolution_level: Optional[int] = None
+    evolution_species_id: Optional[int] = None
 
     class Config:
         from_attributes = True
@@ -163,6 +165,8 @@ class UserDisplay(UserBase):
     id: int
     is_active: bool
     money: int
+    elite_four_progress: int
+    is_champion: bool
     created_at: datetime
 
     class Config:
@@ -174,6 +178,13 @@ class UserPokemonDisplay(BaseModel):
     level: int
     experience: int
     next_level_xp: Optional[int] = 0 # Computed field
+    current_hp: int
+    max_hp: int
+    attack: int
+    defense: int
+    special_attack: int
+    special_defense: int
+    speed: int
     pokemon: PokemonBase
 
     class Config:
