@@ -21,7 +21,7 @@ def buy_item(buy_request: schemas.BuyItemRequest, db: Session = Depends(dependen
     total_cost = item.cost * buy_request.quantity
     
     if not crud.deduct_money(db, user_id=current_user.id, amount=total_cost):
-        raise HTTPException(status_code=400, detail="Insufficient funds")
+        raise HTTPException(status_code=400, detail="You do not have enough money for this purchase.")
         
     return crud.add_user_item(db=db, user_id=current_user.id, item_id=buy_request.item_id, quantity=buy_request.quantity)
 

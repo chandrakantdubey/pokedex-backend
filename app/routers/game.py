@@ -33,7 +33,7 @@ def catch_pokemon(pokemon_data: schemas.UserPokemonCreate, db: Session = Depends
         return user_pokemon
     except Exception as e:
         print(f"Error in catch_pokemon: {e}")
-        raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to catch Pokemon. Please try again.")
 
 @router.get("/my-pokemon", response_model=List[schemas.UserPokemon])
 def read_my_pokemon(db: Session = Depends(dependencies.get_db), current_user: models.User = Depends(dependencies.get_current_user)):
