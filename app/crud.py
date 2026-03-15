@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from . import models, schemas, auth
+import random
 
 # Pokemon
 def get_pokemon(db: Session, pokemon_id: int):
@@ -35,18 +36,17 @@ def create_user(db: Session, user: schemas.UserCreate):
     new_id = max_id + 1
 
     db_user = models.User(
-        id=new_id,               # <-- manually set id here
+        id=new_id,
         email=user.email,
         username=user.username,
         hashed_password=hashed_password,
-        money=1200
+        money=2000  # Updated initial money
     )
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
     
-    # Initial Items: 3 Poke Balls
-    # Query by name first, fallback to ID 1 if that fails but ID 1 exists
+    # 1. Initial Items: 3 Poke Balls
     poke_ball = db.query(models.Item).filter(models.Item.name.ilike("%poke%ball%")).first()
     if not poke_ball:
         poke_ball = db.query(models.Item).filter(models.Item.id == 1).first()
@@ -54,7 +54,31 @@ def create_user(db: Session, user: schemas.UserCreate):
     if poke_ball:
         initial_pokeballs = models.UserItem(user_id=db_user.id, item_id=poke_ball.id, quantity=3)
         db.add(initial_pokeballs)
-        db.commit()
+        
+    # 2. Initial Items: 5 Potions
+    potion = db.query(models.Item).filter(models.Item.name.ilike("potion")).first()
+    if potion:
+        initial_potions = models.UserItem(user_id=db_user.id, item_id=potion.id, quantity=5)
+        db.add(initial_potions)
+        
+    # 3. Random Starter Pokemon (Bulbasaur, Charmander, Squirtle)
+    starter_ids = [1, 4, 7]
+    starter_id = random.choice(starter_ids)
+    
+    # Manual ID generation for UserPokemon
+    max_up_id = db.query(func.max(models.UserPokemon.id)).scalar() or 0
+    new_up_id = max_up_id + 1
+    
+    starter_pokemon = models.UserPokemon(
+        id=new_up_id,
+        user_id=db_user.id,
+        pokemon_id=starter_id,
+        level=5,
+        is_in_party=True
+    )
+    db.add(starter_pokemon)
+    
+    db.commit()
     
     return db_user
 
