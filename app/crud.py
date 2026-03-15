@@ -45,11 +45,16 @@ def create_user(db: Session, user: schemas.UserCreate):
     db.commit()
     db.refresh(db_user)
     
-    # Initial Items: 3 Poke Balls (ID 1)
-    # Assuming Item ID 1 is Poke Ball. If not, we should query by name, but ID 1 is standard in our seed.
-    initial_pokeballs = models.UserItem(user_id=db_user.id, item_id=1, quantity=3)
-    db.add(initial_pokeballs)
-    db.commit()
+    # Initial Items: 3 Poke Balls
+    # Query by name first, fallback to ID 1 if that fails but ID 1 exists
+    poke_ball = db.query(models.Item).filter(models.Item.name.ilike("%poke%ball%")).first()
+    if not poke_ball:
+        poke_ball = db.query(models.Item).filter(models.Item.id == 1).first()
+        
+    if poke_ball:
+        initial_pokeballs = models.UserItem(user_id=db_user.id, item_id=poke_ball.id, quantity=3)
+        db.add(initial_pokeballs)
+        db.commit()
     
     return db_user
 
