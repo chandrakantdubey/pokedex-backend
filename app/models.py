@@ -95,7 +95,17 @@ class PokemonSpecies(Base):
     generation = relationship("Generation")
     egg_groups = relationship("EggGroup", secondary=pokemon_egg_groups)
     varieties = relationship("Pokemon", back_populates="species")
-    parent_species = relationship("PokemonSpecies", remote_side=[id])
+    
+    # Self-referencing relationships
+    # The species this species evolves FROM
+    evolves_from = relationship("PokemonSpecies", 
+                                remote_side=[id], 
+                                foreign_keys=[evolves_from_species_id],
+                                backref="evolves_into_list")
+    
+    # The species this species evolves INTO (helper for UI)
+    next_evolution = relationship("PokemonSpecies", 
+                                  foreign_keys=[evolution_species_id])
 
 class Pokemon(Base):
     __tablename__ = "pokemon"
@@ -249,7 +259,7 @@ class UserBadge(Base):
     __tablename__ = "user_badges"
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
-    gym_id = Column(Integer) # 1-8
+    gym_id = Column(Integer, ForeignKey("gyms.id")) # 1-8
     earned_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="badges")

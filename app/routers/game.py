@@ -31,6 +31,8 @@ def catch_pokemon(pokemon_data: schemas.UserPokemonCreate, db: Session = Depends
         user_pokemon.next_level_xp = calculate_xp_for_level(growth_rate, user_pokemon.level + 1)
         
         return user_pokemon
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"Error in catch_pokemon: {e}")
         raise HTTPException(status_code=500, detail="Failed to catch Pokemon. Please try again.")
