@@ -29,7 +29,18 @@ def get_user_by_email(db: Session, email: str):
 def create_user(db: Session, user: schemas.UserCreate):
     hashed_password = auth.get_password_hash(user.password)
     # Initial money: 1200
-    db_user = models.User(email=user.email, username=user.username, hashed_password=hashed_password, money=1200)
+    # db_user = models.User(email=user.email, username=user.username, hashed_password=hashed_password, money=1200)
+    # Manually get the max id and increment by 1
+    max_id = db.query(func.max(models.User.id)).scalar() or 0
+    new_id = max_id + 1
+
+    db_user = models.User(
+        id=new_id,               # <-- manually set id here
+        email=user.email,
+        username=user.username,
+        hashed_password=hashed_password,
+        money=1200
+    )
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
