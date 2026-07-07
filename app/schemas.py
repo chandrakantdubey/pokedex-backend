@@ -261,6 +261,38 @@ class UserFavorite(UserFavoriteBase):
     class Config:
         from_attributes = True
 
+# --- Breeding & Berries ---
+class UserBerryPlotDisplay(BaseModel):
+    id: int
+    user_id: int
+    berry: Optional[BerryBase] = None
+    planted_at: Optional[datetime] = None
+    last_watered_at: Optional[datetime] = None
+    growth_stage: int
+    
+    class Config:
+        from_attributes = True
+
+class PlantBerryRequest(BaseModel):
+    berry_id: int
+    plot_id: int
+
+class BreedingSessionDisplay(BaseModel):
+    id: int
+    user_id: int
+    parent_one_id: int
+    parent_two_id: int
+    started_at: datetime
+    egg_available_at: datetime
+    is_claimed: bool
+    
+    class Config:
+        from_attributes = True
+
+class StartBreedingRequest(BaseModel):
+    parent_one_id: int
+    parent_two_id: int
+
 # --- Aliases ---
 User = UserDisplay
 UserPokemon = UserPokemonDisplay

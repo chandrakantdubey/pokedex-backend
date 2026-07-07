@@ -114,3 +114,30 @@ def gain_xp(user_pokemon_id: int, xp_data: schemas.XPUpdate, db: Session = Depen
     updated_pokemon.next_level_xp = calculate_xp_for_level(growth_rate, updated_pokemon.level + 1)
     
     return updated_pokemon
+
+# --- Breeding Endpoints ---
+@router.get("/breeding/sessions", response_model=List[schemas.BreedingSessionDisplay])
+def get_breeding_sessions(db: Session = Depends(dependencies.get_db), current_user: models.User = Depends(dependencies.get_current_user)):
+    return crud.get_breeding_sessions(db, current_user.id)
+
+@router.post("/breeding/start", response_model=schemas.BreedingSessionDisplay)
+def start_breeding(request: schemas.StartBreedingRequest, db: Session = Depends(dependencies.get_db), current_user: models.User = Depends(dependencies.get_current_user)):
+    # Check compatibility
+    p1 = crud.get_user_pokemon(db, request.parent_one_id)
+    p2 = crud.get_user_pokemon(db, request.parent_two_id)
+    
+    if not p1 or not p2 or p1.user_id != current_user.id or p2.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="One or both parents not found")
+        
+    from ..game_logic import is_breeding_compatible
+    if not is_breeding_compatible(p1.pokemon.species, p2.pokemon.species):
+        raise HTTPException(status_code=400, detail="Parents are not breeding compatible")
+        
+    return crud.start_breeding_session(db, current_user.id, request.parent_one_id, request.parent_two_id)
+
+@router.post("/breeding/claim/{session_id}", response_model=schemas.UserPokemon)
+def claim_egg(session_id: int, db: Session = Depends(dependencies.get_db), current_user: models.User = Depends(dependencies.get_current_user)):
+    baby = crud.claim_egg(db, session_id)
+    if not baby:
+        raise HTTPException(status_code=400, detail="Egg not ready or already claimed")
+    return baby

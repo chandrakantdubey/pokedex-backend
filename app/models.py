@@ -181,6 +181,18 @@ class Berry(Base):
     
     item = relationship("Item")
 
+class UserBerryPlot(Base):
+    __tablename__ = "user_berry_plots"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    berry_id = Column(Integer, ForeignKey("berries.id"), nullable=True)
+    planted_at = Column(DateTime, nullable=True)
+    last_watered_at = Column(DateTime, nullable=True)
+    growth_stage = Column(Integer, default=0) # 0: empty, 1: seedling, 2: growing, 3: mature, 4: harvestable
+    
+    user = relationship("User")
+    berry = relationship("Berry")
+
 # User & Gameplay Models (Preserved)
 class User(Base):
     __tablename__ = "users"
@@ -213,6 +225,11 @@ class UserPokemon(Base):
     experience = Column(Integer, default=0)
     acquired_at = Column(DateTime, default=datetime.utcnow)
     is_in_party = Column(Boolean, default=False)
+    
+    # New Breeding/Competitive Fields
+    gender = Column(String, default="Unknown") # Male, Female, Genderless, Unknown
+    individual_values = Column(JSON) # { "hp": 31, "atk": 31, ... }
+    is_shiny = Column(Boolean, default=False)
     
     # Current Stats (Calculated based on level and base stats)
     current_hp = Column(Integer, default=10)
@@ -293,3 +310,15 @@ class UserSeen(Base):
     seen_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="seen")
+
+class BreedingSession(Base):
+    __tablename__ = "breeding_sessions"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    parent_one_id = Column(Integer, ForeignKey("user_pokemon.id"))
+    parent_two_id = Column(Integer, ForeignKey("user_pokemon.id"))
+    started_at = Column(DateTime, default=datetime.utcnow)
+    egg_available_at = Column(DateTime)
+    is_claimed = Column(Boolean, default=False)
+    
+    user = relationship("User")

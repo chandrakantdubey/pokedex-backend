@@ -339,3 +339,77 @@ def get_user_stats(db: Session, user_id: int):
         "total_seen": total_seen,
         "money": user.money if user else 0
     }
+
+# --- Breeding Logic ---
+def get_breeding_sessions(db: Session, user_id: int):
+    return db.query(models.BreedingSession).filter(models.BreedingSession.user_id == user_id).all()
+
+def start_breeding_session(db: Session, user_id: int, p1_id: int, p2_id: int):
+    import datetime
+    max_id = db.query(func.max(models.BreedingSession.id)).scalar() or 0
+    # Breed for 5 minutes (300 seconds) for demo purposes
+    egg_time = datetime.datetime.utcnow() + datetime.timedelta(minutes=5)
+    
+    session = models.BreedingSession(
+        id=max_id + 1,
+        user_id=user_id,
+        parent_one_id=p1_id,
+        parent_two_id=p2_id,
+        egg_available_at=egg_time
+    )
+    db.add(session)
+    db.commit()
+    db.refresh(session)
+    return session
+
+def claim_egg(db: Session, session_id: int):
+    session = db.query(models.BreedingSession).get(session_id)
+    if not session or session.is_claimed:
+        return None
+    
+    import datetime
+    if datetime.datetime.utcnow() < session.egg_available_at:
+        return None # Not ready
+
+    # Generate the baby Pokemon
+    p1 = get_user_pokemon(db, session.parent_one_id)
+    # Baby is same species as female parent (or non-Ditto parent)
+    # Simple logic: follow p1 species
+    species_id = p1.pokemon.species_id
+    
+    baby = add_user_pokemon(db, session.user_id, p1.pokemon_id, nickname=f"Baby {p1.pokemon.name}")
+    
+    session.is_claimed = True
+    db.commit()
+    return baby
+
+# --- Berry Plot Logic ---
+def get_user_plots(db: Session, user_id: int):
+    plots = db.query(models.UserBerryPlot).filter(models.UserBerryPlot.user_id == user_id).all()
+    if not plots:
+        # Create 4 initial empty plots for the user
+        for i in range(4):
+            max_id = db.query(func.max(models.UserBerryPlot.id)).scalar() or 0
+            db.add(models.UserBerryPlot(id=max_id + 1, user_id=user_id, growth_stage=0))
+        db.commit()
+        plots = db.query(models.UserBerryPlot).filter(models.UserBerryPlot.user_id == user_id).all()
+    return plots
+
+def plant_berry(db: Session, user_id: int, plot_id: int, berry_id: int):
+    import datetime
+    plot = db.query(models.UserBerryPlot).get(plot_id)
+    if not plot or plot.user_id != user_id or plot.growth_stage != 0:
+        return None
+        
+    # Check if user has the berry (item_id associated with berry)
+    berry = db.query(models.Berry).get(berry_id)
+    if not remove_user_item(db, user_id, berry.item_id, 1):
+        return None
+        
+    plot.berry_id = berry_id
+    plot.planted_at = datetime.datetime.utcnow()
+    plot.last_watered_at = datetime.datetime.utcnow()
+    plot.growth_stage = 1 # Seedling
+    db.commit()
+    db.refresh(plot)
+    return plot

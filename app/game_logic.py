@@ -76,3 +76,61 @@ def calculate_stats(base_stats: dict, level: int):
         stats[key] = math.floor(0.01 * (2 * base + 31) * level) + 5
         
     return stats
+
+def is_breeding_compatible(parent1_species: any, parent2_species: any):
+    """
+    Check if two Pokemon are compatible for breeding.
+    - Ditto can breed with any non-Legendary/Undiscovered species.
+    - Two Pokemon in the same egg group can breed if they are opposite genders.
+    """
+    # Egg Group ID 15 is 'Undiscovered' (Legendaries usually)
+    undiscovered_id = 15
+    ditto_species_id = 132
+    
+    # Check for undiscovered group
+    p1_groups = [g.id for g in parent1_species.egg_groups]
+    p2_groups = [g.id for g in parent2_species.egg_groups]
+    
+    if undiscovered_id in p1_groups or undiscovered_id in p2_groups:
+        return False
+        
+    # Ditto logic
+    if parent1_species.id == ditto_species_id or parent2_species.id == ditto_species_id:
+        return True
+        
+    # Gender check
+    # Simplified: parents must have a gender and be different
+    # (Note: This function doesn't have gender data yet, so calling code must handle it)
+    
+    # Common egg group check
+    common_groups = set(p1_groups).intersection(set(p2_groups))
+    return len(common_groups) > 0
+
+def generate_individual_values():
+    """Generate random IVs from 0 to 31 for each stat."""
+    import random
+    return {
+        "hp": random.randint(0, 31),
+        "attack": random.randint(0, 31),
+        "defense": random.randint(0, 31),
+        "special_attack": random.randint(0, 31),
+        "special_defense": random.randint(0, 31),
+        "speed": random.randint(0, 31)
+    }
+
+def get_gender_from_rate(rate: int):
+    """
+    -1: Genderless
+    0: Always male
+    1-7: Mixed
+    8: Always female
+    """
+    import random
+    if rate == -1: return "Genderless"
+    if rate == 0: return "Male"
+    if rate == 8: return "Female"
+    
+    # rate is 1-7, representing chance of female in eighths
+    if random.randint(1, 8) <= rate:
+        return "Female"
+    return "Male"
